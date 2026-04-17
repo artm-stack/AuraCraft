@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "auracraft",
+  "version": "${version}",
+  "name": "AuraCraft",
+  "description": "A token-based SMP effect progression mod with persistent selectable effects.",
+  "authors": [
+    "ArtM_"
+  ],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.artm_.auracraft.EffectSmpMod"
+    ],
+    "client": [
+      "com.artm_.auracraft.client.EffectSmpClientMod"
+    ],
+    "modmenu": [
+      "com.artm_.auracraft.client.EffectSmpModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "auracraft.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.1",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}

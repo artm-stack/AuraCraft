@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " S ",
+    "JHF",
+    " T "
+  ],
+  "key": {
+    "S": "minecraft:sugar",
+    "J": "minecraft:rabbit_foot",
+    "H": "minecraft:heart_of_the_sea",
+    "F": "minecraft:magma_cream",
+    "T": "minecraft:blaze_powder"
+  },
+  "result": {
+    "id": "auracraft:aura_reset",
+    "count": 1
+  }
+}

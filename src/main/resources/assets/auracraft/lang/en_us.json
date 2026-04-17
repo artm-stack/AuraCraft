@@ -1,0 +1,43 @@
+{
+  "category.auracraft.general": "AuraCraft",
+  "key.auracraft.pick_effect": "Pick Effect",
+
+  "screen.auracraft.title": "Choose Your Effect",
+  "screen.auracraft.subtitle": "Pick once. You cannot change it later.",
+  "screen.auracraft.left_header": "Effects",
+  "screen.auracraft.right_header": "Details",
+  "screen.auracraft.choose_button": "Choose Selected Effect",
+
+  "item.auracraft.aura_reset": "Aura Reset",
+  "item.auracraft.aura_plus": "Aura Plus",
+
+  "effect.auracraft.speed.desc": "Increases movement speed.",
+  "effect.auracraft.haste.desc": "Increases attack speed and mining speed.",
+  "effect.auracraft.strength.desc": "Increases melee attack damage.",
+  "effect.auracraft.jump_boost.desc": "Increases jump height and reduces fall damage while active.",
+  "effect.auracraft.resistance.desc": "Reduces incoming damage from most sources.",
+  "effect.auracraft.fire_resistance.desc": "Prevents damage from fire, lava, and related burning.",
+  "effect.auracraft.invisibility.desc": "Makes the player model invisible.",
+  "effect.auracraft.saturation.desc": "Immediately restores hunger and saturation.",
+  "effect.auracraft.conduit_power.desc": "Gives underwater breathing, underwater vision, and faster underwater mining.",
+
+  "message.auracraft.prompt_with_key": "AuraCraft: Press %s to pick an effect.",
+  "message.auracraft.already_chosen": "You already selected an effect. It cannot be changed.",
+  "message.auracraft.already_chosen_client": "You already selected %s. It cannot be changed.",
+  "message.auracraft.effect_already_selected": "You already selected %s.",
+  "message.auracraft.effect_upgrade_cap": "%s is already at the max duplicate upgrade.",
+  "message.auracraft.effect_upgraded": "Upgraded %s. Bonus amplifier now +%s.",
+  "message.auracraft.invalid_effect": "That effect is invalid.",
+  "message.auracraft.effect_disabled_in_config": "That effect is disabled by server config.",
+  "message.auracraft.chosen": "You selected %s.",
+  "message.auracraft.sent_choice": "Effect selected.",
+  "message.auracraft.max_effects_reached": "You already have the maximum of %s effects.",
+  "message.auracraft.no_tokens": "You do not have an effect token to select another effect.",
+  "message.auracraft.repick_no_effects": "You don't have any selected effects to reset.",
+  "message.auracraft.repick_item_used_suffix": "You can now pick %s effect(s) again.",
+  "message.auracraft.extra_token_used": "You gained +1 effect token. Available tokens: %s",
+  "message.auracraft.extra_token_restored_first": "Your First Effect was restored.",
+  "message.auracraft.kill_dropped_token_item": "You killed a player. They dropped a +Effect item.",
+  "message.auracraft.pvp_lost_effect": "You were killed lost %s.",
+  "message.auracraft.pvp_no_effect_to_lose": "You were killed in PvP. You had no effect to lose."
+}
