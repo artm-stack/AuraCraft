@@ -6,18 +6,19 @@ Welcome to the AuraCraft wiki. This guide covers what players and server operato
 
 ## Table of Contents
 
-1. Core Concepts
-2. Getting Started (Players)
-3. Aura Picker UI
-4. Token Economy
-5. Effect Upgrades
-6. Special Items
-7. PvP & Death Mechanics
-8. Commands Reference
-9. Server Setup Guide
-10. Configuration Reference
-11. Compatibility & Multiplayer
-12. FAQ
+1. [Core Concepts](#1-core-concepts)
+2. [Getting Started (Players)](#2-getting-started-players)
+3. [Aura Picker UI](#3-aura-picker-ui)
+4. [Token Economy](#4-token-economy)
+5. [Effect Upgrades](#5-effect-upgrades)
+6. [Special Items](#6-special-items)
+7. [PvP & Death Mechanics](#7-pvp--death-mechanics)
+8. [Commands Reference](#8-commands-reference)
+9. [Server Setup Guide](#9-server-setup-guide)
+10. [Configuration Reference](#10-configuration-reference)
+11. [Compatibility & Multiplayer](#11-compatibility--multiplayer)
+12. [FAQ](#12-faq)
+
 
 ---
 
