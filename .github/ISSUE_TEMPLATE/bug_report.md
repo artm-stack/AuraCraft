@@ -1,9 +1,9 @@
 ---
-name: Bug report
-about: Report a bug in AuraCraft
-title: "[Bug] "
-labels: bug
-assignees: ""
+Name: Bug report
+About: Report a bug in AuraCraft
+Title: "[Bug] "
+Labels: bug
+Assignees: ""
 ---
 
 ## Summary
