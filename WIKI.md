@@ -247,16 +247,3 @@ A. Tokens, first effect, selected effect IDs, and UI-disabled state.
 
 Q. Is AuraCraft required on both server and client?
 A. Yes. The join handshake rejects missing or outdated client installs.
----
-
-## Missing screenshots (recommended for docs/images)
-
-Current images found in `docs/images`:
-- `ui-picker.png`
-- `token-lost.png`
-- `effect-lost.png`
-
-Suggested missing images to add:
-- `aura-plus.png` (Aura Plus item in inventory)
-- `aura-reset.png` (Aura Reset item in inventory)
-- `pvp-kill-reward.png` (killer reward chat/drop example)
