@@ -6,7 +6,7 @@
 
 ## What is AuraCraft?
 
-AuraCraft lets players permanently equip status effects as **auras** using a token economy. Instead of brewing potions, players spend tokens to lock in the effects they want — and can upgrade those effects by reinvesting in the same one. Tokens and selections persist across sessions, making your aura a meaningful part of your character build.
+AuraCraft lets players permanently equip status effects as **auras** using a token economy. Instead of brewing potions, players spend tokens to lock in the effects they want and can upgrade those effects by reinvesting in the same one. Tokens and selections persist across sessions, making your aura a meaningful part of your character build.
 
 On PvP servers, auras become a stake: dying to another player can cost you an effect or a token, and killers may be rewarded for it.
 
@@ -47,7 +47,7 @@ Every player starts with a token budget. The total **load** on your budget is al
 selected effects + available tokens ≤ maxEffects
 ```
  
-This means holding tokens "costs" budget — spending them on effects is always the efficient play.
+This means holding tokens "costs" budget, spending them on effects is always the efficient play.
  
 ### Choosing and Upgrading Effects
  
