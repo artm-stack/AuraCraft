@@ -66,13 +66,6 @@ public final class EffectSmpMod implements ModInitializer {
     private static final int MAX_SELECTION_TOKENS = 3;
     private static final int HANDSHAKE_TIMEOUT_TICKS = 100;
     private static final Map<UUID, Integer> PENDING_HANDSHAKE_DEADLINES = new HashMap<>();
-    private static final Set<String> DEFAULT_PLUS_ONE_EFFECTS = Set.of(
-        "minecraft:speed",
-        "minecraft:haste",
-        "minecraft:strength",
-        "minecraft:jump_boost",
-        "minecraft:resistance"
-    );
 
     public static final Item REPICK_ITEM = new Item(itemProperties("aura_reset").stacksTo(16).rarity(Rarity.RARE)) {
         @Override
@@ -317,7 +310,7 @@ public final class EffectSmpMod implements ModInitializer {
                 Component.literal("Upgraded ").withStyle(ChatFormatting.WHITE)
                     .append(effectNameComponent(selectedId).copy().withStyle(ChatFormatting.WHITE))
                     .append(Component.literal(". Bonus amplifier now ").withStyle(ChatFormatting.WHITE))
-                    .append(Component.literal("+" + (newBonus + 1)).withStyle(ChatFormatting.AQUA))
+                    .append(Component.literal("+" + newBonus).withStyle(ChatFormatting.AQUA))
             );
             return;
         }
@@ -917,7 +910,7 @@ public final class EffectSmpMod implements ModInitializer {
         if (!BuiltInRegistries.MOB_EFFECT.containsKey(id)) {
             return;
         }
-        int amplifier = baseAmplifierFor(normalized) + Math.max(0, additionalBonus);
+        int amplifier = Math.max(0, additionalBonus);
         int durationTicks = 30 * 20;
         Holder.Reference<?> genericRef = BuiltInRegistries.MOB_EFFECT.get(id).orElse(null);
         if (!(genericRef instanceof Holder.Reference<?> refObj)) {
@@ -948,10 +941,6 @@ public final class EffectSmpMod implements ModInitializer {
                 (Holder.Reference<net.minecraft.world.effect.MobEffect>) refObj;
             player.removeEffect(effectRef);
         }
-    }
-
-    private static int baseAmplifierFor(String effectId) {
-        return DEFAULT_PLUS_ONE_EFFECTS.contains(effectId) ? 1 : 0;
     }
 
     private static void playTokenGainSound(ServerPlayer player) {
