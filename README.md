@@ -36,7 +36,7 @@ On PvP servers, auras become a stake: dying to another player can cost you an ef
 
 ## Gameplay
 
-<!-- SCREENSHOT PLACEHOLDER: Death screen or chat message showing an aura was lost -->
+![Aura Picker UI](docs/images/ui-picker.png)
 - Players use the picker UI (`Y` by default) to choose effects.
   
 ### The Token Economy
@@ -64,7 +64,8 @@ This means holding tokens "costs" budget — spending them on effects is always 
 ---
 
 ## PvP Rules
-<!-- SCREENSHOT PLACEHOLDER: Death screen or chat message showing an aura was lost -->
+![Aura Token Lost](docs/images/token-lost.png)
+![Aura Effect Lost](docs/images/effect-lost.png)
  
 When you die to another player, AuraCraft applies the following logic (configurable):
  
