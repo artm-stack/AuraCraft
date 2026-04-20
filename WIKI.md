@@ -85,7 +85,7 @@ Behavior:
 - Selecting or upgrading effects.
 - PvP death logic (see section 7).
 - Admin command: `/aura remove [player] [amount]`
-- Voluntary command: `/aura withdraw`
+- Voluntary command: `/aura withdraw` (withdraws latest selected effect first, else 1 token)
 
 ---
 
@@ -109,7 +109,8 @@ Example with default bonus cap `1`:
 - **Use behavior**:
   - Fails if token cap (3) is already reached.
   - Fails if combined load cap (`maxEffects`) is full.
-  - If first selected effect was lost and conditions match, it may restore that effect.
+  - Restores the latest effect withdrawn by `/aura withdraw` first (LIFO).
+  - If no withdrawn effect is available, it may restore the first selected effect if that one was lost.
   - Otherwise grants +1 token.
 
 ### Aura Reset
@@ -152,7 +153,9 @@ Root command: `/aura`
 ### Player command
 
 - `/aura withdraw`
-  - Removes 1 token from self.
+  - If you have selected effects: removes your most recent selected effect and gives 1 `Aura Plus` item.
+  - If you have no selected effects: removes 1 token and gives 1 `Aura Plus` item.
+  - If you have neither: command fails.
 
 ### GameMaster commands (OP level 2+)
 
@@ -242,6 +245,12 @@ A. No. Token count is hard-capped at 3.
 
 Q. Why did I lose a token instead of my last effect in PvP?
 A. If you had exactly one selected effect and spare tokens, the mod removes one token first.
+
+Q. What does `/aura withdraw` remove first?
+A. It removes your most recently selected effect first. If you have no selected effects, it removes one token instead.
+
+Q. What does Aura Plus restore first now?
+A. It restores the latest effect you withdrew with `/aura withdraw` before any other restore behavior.
 
 Q. What does `/aura status` show?
 A. Tokens, first effect, selected effect IDs, and UI-disabled state.

@@ -58,7 +58,7 @@ This means holding tokens "costs" budget, spending them on effects is always the
  
 | Item | How to Obtain | Effect |
 |---|---|---|
-| `Aura Plus` | Crafting/Player drop | Increases your token capacity by 1 |
+| `Aura Plus` | Crafting/Player drop | Restores your latest withdrawn effect first; otherwise restores first lost effect; otherwise grants +1 token |
 | `Aura Reset` | Crafting | Clears all selected effects and returns repick tokens |
  
 ---
@@ -86,7 +86,7 @@ All commands require **GameMaster** (op level 2) unless noted.
 | `/aura reset [player]` | Clears a player's selections and returns their repick tokens |
 | `/aura plus [player] [amount]` | Grants the player extra tokens |
 | `/aura remove [player] [amount]` | Removes tokens from a player |
-| `/aura withdraw` | *(Any player)* Voluntarily removes 1 token from yourself |
+| `/aura withdraw` | *(Any player)* Withdraws your latest selected effect into an `Aura Plus` item (or 1 token if no effects are selected) |
  
 ---
 ## Configuration

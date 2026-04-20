@@ -17,6 +17,7 @@ public abstract class ServerPlayerEntityMixin implements PlayerEffectChoice {
     private String auracraft$effectAmplifierBonuses;
     private String auracraft$selectionTokens;
     private String auracraft$firstEffect;
+    private String auracraft$withdrawnEffects;
 
     @Override
     public String auracraft$getChosenEffect() {
@@ -44,6 +45,11 @@ public abstract class ServerPlayerEntityMixin implements PlayerEffectChoice {
     }
 
     @Override
+    public String auracraft$getWithdrawnEffects() {
+        return this.auracraft$withdrawnEffects;
+    }
+
+    @Override
     public void auracraft$setChosenEffect(String effectId) {
         this.auracraft$chosenEffect = effectId;
     }
@@ -68,6 +74,11 @@ public abstract class ServerPlayerEntityMixin implements PlayerEffectChoice {
         this.auracraft$firstEffect = effectId;
     }
 
+    @Override
+    public void auracraft$setWithdrawnEffects(String effectIds) {
+        this.auracraft$withdrawnEffects = effectIds;
+    }
+
     @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
     private void auracraft$addAdditionalSaveData(ValueOutput output, CallbackInfo ci) {
         if (this.auracraft$chosenEffect != null) {
@@ -85,6 +96,9 @@ public abstract class ServerPlayerEntityMixin implements PlayerEffectChoice {
         if (this.auracraft$firstEffect != null) {
             output.putString(EffectSmpMod.getFirstEffectKey(), this.auracraft$firstEffect);
         }
+        if (this.auracraft$withdrawnEffects != null) {
+            output.putString(EffectSmpMod.getWithdrawnEffectsKey(), this.auracraft$withdrawnEffects);
+        }
     }
 
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
@@ -94,6 +108,7 @@ public abstract class ServerPlayerEntityMixin implements PlayerEffectChoice {
         this.auracraft$effectAmplifierBonuses = input.getString(EffectSmpMod.getEffectAmplifierBonusesKey()).orElse(null);
         this.auracraft$selectionTokens = input.getString(EffectSmpMod.getSelectionTokensKey()).orElse(null);
         this.auracraft$firstEffect = input.getString(EffectSmpMod.getFirstEffectKey()).orElse(null);
+        this.auracraft$withdrawnEffects = input.getString(EffectSmpMod.getWithdrawnEffectsKey()).orElse(null);
     }
 
     @Inject(method = "restoreFrom", at = @At("TAIL"))
@@ -104,5 +119,6 @@ public abstract class ServerPlayerEntityMixin implements PlayerEffectChoice {
         this.auracraft$effectAmplifierBonuses = oldData.auracraft$getEffectAmplifierBonuses();
         this.auracraft$selectionTokens = oldData.auracraft$getSelectionTokens();
         this.auracraft$firstEffect = oldData.auracraft$getFirstEffect();
+        this.auracraft$withdrawnEffects = oldData.auracraft$getWithdrawnEffects();
     }
 }

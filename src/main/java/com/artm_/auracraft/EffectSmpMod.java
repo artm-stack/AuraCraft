@@ -63,6 +63,7 @@ public final class EffectSmpMod implements ModInitializer {
     private static final String EFFECT_AMPLIFIER_BONUSES_KEY = "auracraft_effect_amplifier_bonuses";
     private static final String SELECTION_TOKENS_KEY = "auracraft_selection_tokens";
     private static final String FIRST_EFFECT_KEY = "auracraft_first_effect";
+    private static final String WITHDRAWN_EFFECTS_KEY = "auracraft_withdrawn_effects";
     private static final int MAX_SELECTION_TOKENS = 3;
     private static final int HANDSHAKE_TIMEOUT_TICKS = 100;
     private static final Map<UUID, Integer> PENDING_HANDSHAKE_DEADLINES = new HashMap<>();
@@ -109,20 +110,24 @@ public final class EffectSmpMod implements ModInitializer {
                     serverPlayer.sendSystemMessage(Component.literal("You already have the max token count (" + MAX_SELECTION_TOKENS + ").").withStyle(ChatFormatting.RED));
                     return InteractionResult.FAIL;
                 }
-                if (getSelectedEffectIds(serverPlayer).size() >= maxEffects && !hasUpgradableSelectedEffect(serverPlayer)) {
-                    serverPlayer.sendSystemMessage(Component.translatable("message.auracraft.max_effects_reached", maxEffects).withStyle(ChatFormatting.RED));
-                    return InteractionResult.FAIL;
+                String restoredWithdrawn = tryRestoreWithdrawnEffect(serverPlayer);
+                boolean restoredFirst = false;
+                if (restoredWithdrawn == null) {
+                    restoredFirst = tryRestoreFirstEffect(serverPlayer);
                 }
-
-                boolean restoredFirst = tryRestoreFirstEffect(serverPlayer);
-                if (!restoredFirst) {
+                if (restoredWithdrawn == null && !restoredFirst) {
                     addSelectionTokens(serverPlayer, 1);
                 }
                 syncChosenEffect(serverPlayer);
                 if (!isUiDisabled(serverPlayer.level().getServer())) {
                     ServerPlayNetworking.send(serverPlayer, PromptEffectPayload.INSTANCE);
                 }
-                if (restoredFirst) {
+                if (restoredWithdrawn != null) {
+                    serverPlayer.sendSystemMessage(
+                        Component.literal("Your withdrawn effect was restored: ").withStyle(ChatFormatting.WHITE)
+                            .append(effectNameComponent(restoredWithdrawn).copy().withStyle(ChatFormatting.AQUA))
+                    );
+                } else if (restoredFirst) {
                     serverPlayer.sendSystemMessage(Component.translatable("message.auracraft.extra_token_restored_first").withStyle(ChatFormatting.WHITE));
                 } else {
                     serverPlayer.sendSystemMessage(
@@ -424,6 +429,10 @@ public final class EffectSmpMod implements ModInitializer {
         return FIRST_EFFECT_KEY;
     }
 
+    public static String getWithdrawnEffectsKey() {
+        return WITHDRAWN_EFFECTS_KEY;
+    }
+
     private static LiteralArgumentBuilder<CommandSourceStack> createRootCommand(String rootName) {
         return literal(rootName)
             .executes(context -> {
@@ -535,18 +544,59 @@ public final class EffectSmpMod implements ModInitializer {
     }
 
     private static int withdrawTokenCommand(CommandSourceStack source, ServerPlayer player) {
-        int current = getAvailableSelectionTokens(player);
-        if (current <= 0) {
-            source.sendFailure(Component.literal("You have no Aura Plus tokens to withdraw."));
-            return 0;
+        String withdrawnEffect = withdrawLatestSelectedEffect(player);
+        if (withdrawnEffect == null) {
+            int current = getAvailableSelectionTokens(player);
+            if (current <= 0) {
+                source.sendFailure(Component.literal("You have no Aura Plus tokens or selected effects to withdraw."));
+                return 0;
+            }
+            setAvailableSelectionTokens(player, current - 1);
         }
-        setAvailableSelectionTokens(player, current - 1);
+
+        ItemStack withdrawnItem = new ItemStack(EXTRA_EFFECT_TOKEN_ITEM);
+        if (!player.getInventory().add(withdrawnItem)) {
+            player.drop(withdrawnItem, false);
+        }
         syncChosenEffect(player);
-        source.sendSuccess(
-            () -> Component.literal("Withdrew 1 Aura Plus token. Remaining tokens: " + getAvailableSelectionTokens(player) + "."),
-            false
-        );
+        if (!isUiDisabled(player.level().getServer()) && getAvailableSelectionTokens(player) > 0) {
+            ServerPlayNetworking.send(player, PromptEffectPayload.INSTANCE);
+        }
+
+        if (withdrawnEffect != null) {
+            source.sendSuccess(
+                () -> Component.literal("Withdrew 1 selected effect into an Aura Plus item: ").append(effectNameComponent(withdrawnEffect)),
+                false
+            );
+        } else {
+            source.sendSuccess(
+                () -> Component.literal("Withdrew 1 Aura Plus token into an item. Remaining tokens: " + getAvailableSelectionTokens(player) + "."),
+                false
+            );
+        }
         return 1;
+    }
+
+    private static String withdrawLatestSelectedEffect(ServerPlayer player) {
+        Set<String> selectedIds = getSelectedEffectIds(player);
+        if (selectedIds.isEmpty()) {
+            return null;
+        }
+
+        String lastId = null;
+        for (String id : selectedIds) {
+            lastId = id;
+        }
+        if (lastId == null) {
+            return null;
+        }
+
+        selectedIds.remove(lastId);
+        setSelectedEffectIds(player, selectedIds);
+        setAdditionalAmplifierBonus(player, lastId, 0);
+        removeEffectById(player, lastId);
+        pushWithdrawnEffectId(player, lastId);
+        return lastId;
     }
 
     private static int addTokensCommand(CommandSourceStack source, ServerPlayer target, int requestedAmount) {
@@ -649,6 +699,52 @@ public final class EffectSmpMod implements ModInitializer {
         Map<String, Integer> bonuses = new HashMap<>(getEffectAmplifierBonuses(player));
         bonuses.keySet().removeIf(key -> !ids.contains(key));
         setEffectAmplifierBonuses(player, bonuses);
+    }
+
+    private static List<String> getWithdrawnEffectIds(ServerPlayer player) {
+        PlayerEffectChoice data = (PlayerEffectChoice) player;
+        String raw = data.auracraft$getWithdrawnEffects();
+        List<String> ids = new ArrayList<>();
+        if (raw == null || raw.isBlank()) {
+            return ids;
+        }
+        for (String part : raw.split(",")) {
+            String id = normalizeEffectId(part.trim());
+            if (id != null && isKnownEffectId(id)) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    private static void setWithdrawnEffectIds(ServerPlayer player, List<String> ids) {
+        PlayerEffectChoice data = (PlayerEffectChoice) player;
+        if (ids == null || ids.isEmpty()) {
+            data.auracraft$setWithdrawnEffects(null);
+            return;
+        }
+        List<String> normalized = new ArrayList<>();
+        for (String id : ids) {
+            String effectId = normalizeEffectId(id);
+            if (effectId != null && isKnownEffectId(effectId)) {
+                normalized.add(effectId);
+            }
+        }
+        if (normalized.isEmpty()) {
+            data.auracraft$setWithdrawnEffects(null);
+            return;
+        }
+        data.auracraft$setWithdrawnEffects(String.join(",", normalized));
+    }
+
+    private static void pushWithdrawnEffectId(ServerPlayer player, String effectId) {
+        String normalized = normalizeEffectId(effectId);
+        if (normalized == null || !isKnownEffectId(normalized)) {
+            return;
+        }
+        List<String> ids = getWithdrawnEffectIds(player);
+        ids.add(normalized);
+        setWithdrawnEffectIds(player, ids);
     }
 
     private static int getAvailableSelectionTokens(ServerPlayer player) {
@@ -770,18 +866,37 @@ public final class EffectSmpMod implements ModInitializer {
         return true;
     }
 
-    private static int getMaxDuplicateAmplifierBonus() {
-        return Math.max(0, EffectSmpConfig.get().maxDuplicateAmplifierBonus);
+    private static String tryRestoreWithdrawnEffect(ServerPlayer player) {
+        List<String> withdrawnIds = getWithdrawnEffectIds(player);
+        if (withdrawnIds.isEmpty()) {
+            return null;
+        }
+
+        Set<String> selected = getSelectedEffectIds(player);
+        String restoredId = null;
+        while (!withdrawnIds.isEmpty()) {
+            String candidate = withdrawnIds.remove(withdrawnIds.size() - 1);
+            if (!isKnownEffectId(candidate) || selected.contains(candidate)) {
+                continue;
+            }
+            restoredId = candidate;
+            break;
+        }
+
+        setWithdrawnEffectIds(player, withdrawnIds);
+        if (restoredId == null) {
+            return null;
+        }
+
+        selected.add(restoredId);
+        setSelectedEffectIds(player, selected);
+        setAdditionalAmplifierBonus(player, restoredId, 0);
+        applyEffectById(player, restoredId, 0);
+        return restoredId;
     }
 
-    private static boolean hasUpgradableSelectedEffect(ServerPlayer player) {
-        int maxDuplicateBonus = getMaxDuplicateAmplifierBonus();
-        for (String effectId : getSelectedEffectIds(player)) {
-            if (getAdditionalAmplifierBonus(player, effectId) < maxDuplicateBonus) {
-                return true;
-            }
-        }
-        return false;
+    private static int getMaxDuplicateAmplifierBonus() {
+        return Math.max(0, EffectSmpConfig.get().maxDuplicateAmplifierBonus);
     }
 
     private static Set<String> getCappedEffectIds(ServerPlayer player) {
