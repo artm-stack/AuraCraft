@@ -82,33 +82,33 @@ public abstract class ServerPlayerEntityMixin implements PlayerEffectChoice {
     @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
     private void auracraft$addAdditionalSaveData(ValueOutput output, CallbackInfo ci) {
         if (this.auracraft$chosenEffect != null) {
-            output.putString(EffectSmpMod.getChosenEffectKey(), this.auracraft$chosenEffect);
+            output.putString(EffectSmpMod.CHOSEN_EFFECT_KEY, this.auracraft$chosenEffect);
         }
         if (this.auracraft$chosenEffects != null) {
-            output.putString(EffectSmpMod.getChosenEffectsKey(), this.auracraft$chosenEffects);
+            output.putString(EffectSmpMod.CHOSEN_EFFECTS_KEY, this.auracraft$chosenEffects);
         }
         if (this.auracraft$effectAmplifierBonuses != null) {
-            output.putString(EffectSmpMod.getEffectAmplifierBonusesKey(), this.auracraft$effectAmplifierBonuses);
+            output.putString(EffectSmpMod.EFFECT_AMPLIFIER_BONUSES_KEY, this.auracraft$effectAmplifierBonuses);
         }
         if (this.auracraft$selectionTokens != null) {
-            output.putString(EffectSmpMod.getSelectionTokensKey(), this.auracraft$selectionTokens);
+            output.putString(EffectSmpMod.SELECTION_TOKENS_KEY, this.auracraft$selectionTokens);
         }
         if (this.auracraft$firstEffect != null) {
-            output.putString(EffectSmpMod.getFirstEffectKey(), this.auracraft$firstEffect);
+            output.putString(EffectSmpMod.FIRST_EFFECT_KEY, this.auracraft$firstEffect);
         }
         if (this.auracraft$withdrawnEffects != null) {
-            output.putString(EffectSmpMod.getWithdrawnEffectsKey(), this.auracraft$withdrawnEffects);
+            output.putString(EffectSmpMod.WITHDRAWN_EFFECTS_KEY, this.auracraft$withdrawnEffects);
         }
     }
 
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
     private void auracraft$readAdditionalSaveData(ValueInput input, CallbackInfo ci) {
-        this.auracraft$chosenEffect = input.getString(EffectSmpMod.getChosenEffectKey()).orElse(null);
-        this.auracraft$chosenEffects = input.getString(EffectSmpMod.getChosenEffectsKey()).orElse(null);
-        this.auracraft$effectAmplifierBonuses = input.getString(EffectSmpMod.getEffectAmplifierBonusesKey()).orElse(null);
-        this.auracraft$selectionTokens = input.getString(EffectSmpMod.getSelectionTokensKey()).orElse(null);
-        this.auracraft$firstEffect = input.getString(EffectSmpMod.getFirstEffectKey()).orElse(null);
-        this.auracraft$withdrawnEffects = input.getString(EffectSmpMod.getWithdrawnEffectsKey()).orElse(null);
+        this.auracraft$chosenEffect = input.getString(EffectSmpMod.CHOSEN_EFFECT_KEY).orElse(null);
+        this.auracraft$chosenEffects = input.getString(EffectSmpMod.CHOSEN_EFFECTS_KEY).orElse(null);
+        this.auracraft$effectAmplifierBonuses = input.getString(EffectSmpMod.EFFECT_AMPLIFIER_BONUSES_KEY).orElse(null);
+        this.auracraft$selectionTokens = input.getString(EffectSmpMod.SELECTION_TOKENS_KEY).orElse(null);
+        this.auracraft$firstEffect = input.getString(EffectSmpMod.FIRST_EFFECT_KEY).orElse(null);
+        this.auracraft$withdrawnEffects = input.getString(EffectSmpMod.WITHDRAWN_EFFECTS_KEY).orElse(null);
     }
 
     @Inject(method = "restoreFrom", at = @At("TAIL"))

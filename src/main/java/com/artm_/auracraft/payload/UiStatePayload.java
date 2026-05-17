@@ -1,16 +1,20 @@
 package com.artm_.auracraft.payload;
 
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
-public record UiStatePayload(boolean uiDisabled) implements CustomPacketPayload {
+public record UiStatePayload(boolean uiDisabled, List<String> enabledEffectIds) implements CustomPacketPayload {
     public static final Type<UiStatePayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath("auracraft", "ui_state"));
     public static final StreamCodec<RegistryFriendlyByteBuf, UiStatePayload> CODEC = StreamCodec.composite(
         ByteBufCodecs.BOOL,
         UiStatePayload::uiDisabled,
+        ByteBufCodecs.collection(ArrayList::new, ByteBufCodecs.STRING_UTF8),
+        UiStatePayload::enabledEffectIds,
         UiStatePayload::new
     );
 

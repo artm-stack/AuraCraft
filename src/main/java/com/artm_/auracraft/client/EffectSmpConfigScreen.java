@@ -14,6 +14,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 public final class EffectSmpConfigScreen extends Screen {
@@ -53,6 +54,10 @@ public final class EffectSmpConfigScreen extends Screen {
         this.parent = parent;
     }
 
+    private boolean isEditable() {
+        return this.minecraft != null && this.minecraft.getSingleplayerServer() != null;
+    }
+
     @Override
     protected void init() {
         super.init();
@@ -75,6 +80,7 @@ public final class EffectSmpConfigScreen extends Screen {
     }
 
     private void buildStaticControls() {
+        boolean editable = isEditable();
         int left = this.panelX + 14;
         int tabY = this.panelY + 30;
         this.generalTabButton = this.addRenderableWidget(
@@ -92,11 +98,11 @@ public final class EffectSmpConfigScreen extends Screen {
 
         int footerY = this.panelY + PANEL_HEIGHT - 28;
         int buttonWidth = (PANEL_WIDTH - 38) / 2;
-        this.addRenderableWidget(
-            Button.builder(Component.literal("Save"), b -> saveAndClose())
-                .bounds(this.panelX + 16, footerY, buttonWidth, 20)
-                .build()
-        );
+        Button saveButton = Button.builder(Component.literal("Save"), b -> saveAndClose())
+            .bounds(this.panelX + 16, footerY, buttonWidth, 20)
+            .build();
+        saveButton.active = editable;
+        this.addRenderableWidget(saveButton);
         this.addRenderableWidget(
             Button.builder(Component.literal("Cancel"), b -> this.onClose())
                 .bounds(this.panelX + 16 + buttonWidth + 6, footerY, buttonWidth, 20)
@@ -105,16 +111,19 @@ public final class EffectSmpConfigScreen extends Screen {
     }
 
     private void buildTabContents() {
+        boolean editable = isEditable();
         int rowY = this.panelY + 78;
         this.pvpLossBox = new EditBox(this.font, this.valueX, rowY - 2, 120, 20, Component.literal("PvPEffectsLostOnDeath"));
         this.pvpLossBox.setMaxLength(3);
         this.pvpLossBox.setValue(Integer.toString(this.working.pvpEffectsLostOnDeath));
+        this.pvpLossBox.setEditable(editable);
         this.addRenderableWidget(this.pvpLossBox);
 
         rowY += 30;
         this.duplicateBonusBox = new EditBox(this.font, this.valueX, rowY - 2, 120, 20, Component.literal("maxDuplicateAmplifierBonus"));
         this.duplicateBonusBox.setMaxLength(3);
         this.duplicateBonusBox.setValue(Integer.toString(this.working.maxDuplicateAmplifierBonus));
+        this.duplicateBonusBox.setEditable(editable);
         this.addRenderableWidget(this.duplicateBonusBox);
 
         int effectsTopY = this.panelY + EFFECTS_TOP_Y_OFFSET;
@@ -125,6 +134,9 @@ public final class EffectSmpConfigScreen extends Screen {
             final int row = i;
             Button toggle = this.addRenderableWidget(
                 Button.builder(Component.empty(), b -> {
+                    if (!isEditable()) {
+                        return;
+                    }
                     String effectId = this.visibleEffectIds.get(row);
                     if (effectId == null) {
                         return;
@@ -192,10 +204,17 @@ public final class EffectSmpConfigScreen extends Screen {
             int thumbTravel = Math.max(0, trackHeight - thumbHeight);
             int thumbY = trackTop + (maxOffset == 0 ? 0 : (this.effectScrollOffset * thumbTravel) / maxOffset);
             graphics.fill(trackX, thumbY, trackX + 6, thumbY + thumbHeight, 0xFFB8B8B8);
-
         }
 
-        if (!this.statusText.getString().isEmpty()) {
+        if (!isEditable()) {
+            graphics.centeredText(
+                this.font,
+                Component.literal("Settings can only be changed in singleplayer.").withStyle(ChatFormatting.YELLOW),
+                this.panelX + (PANEL_WIDTH / 2),
+                this.panelY + PANEL_HEIGHT - 40,
+                0xFFFFFF00
+            );
+        } else if (!this.statusText.getString().isEmpty()) {
             graphics.centeredText(this.font, this.statusText, this.panelX + (PANEL_WIDTH / 2), this.panelY + PANEL_HEIGHT - 40, 0xFFFF8080);
         }
     }
@@ -224,9 +243,9 @@ public final class EffectSmpConfigScreen extends Screen {
         this.effectsTabButton.active = general;
 
         this.pvpLossBox.visible = general;
-        this.pvpLossBox.setEditable(general);
+        this.pvpLossBox.setEditable(general && isEditable());
         this.duplicateBonusBox.visible = general;
-        this.duplicateBonusBox.setEditable(general);
+        this.duplicateBonusBox.setEditable(general && isEditable());
 
         for (Button toggle : this.effectToggleButtons) {
             toggle.visible = !general;
@@ -234,6 +253,7 @@ public final class EffectSmpConfigScreen extends Screen {
     }
 
     private void refreshEffectToggleLabels() {
+        boolean editable = isEditable();
         for (int i = 0; i < MAX_VISIBLE_EFFECTS; i++) {
             int idx = this.effectScrollOffset + i;
             Button button = this.effectToggleButtons.get(i);
@@ -246,7 +266,7 @@ public final class EffectSmpConfigScreen extends Screen {
             String effectId = this.allEffectIds.get(idx);
             this.visibleEffectIds.set(i, effectId);
             button.visible = true;
-            button.active = true;
+            button.active = editable;
             boolean enabled = this.working.isEffectEnabled(effectId);
             button.setMessage(Component.literal(enabled ? "Enabled" : "Disabled").withStyle(enabled ? ChatFormatting.GREEN : ChatFormatting.RED));
         }
@@ -263,12 +283,15 @@ public final class EffectSmpConfigScreen extends Screen {
             cfg.enabledEffects = new HashMap<>(this.working.enabledEffects);
             cfg.save();
             EffectSmpConfig.load();
-            EffectSmpClientMod.refreshEnabledEffectsFromConfig();
 
-            if (this.minecraft != null && this.minecraft.getSingleplayerServer() != null) {
-                for (ServerPlayer player : this.minecraft.getSingleplayerServer().getPlayerList().getPlayers()) {
-                    EffectSmpMod.syncChosenEffect(player);
-                }
+            MinecraftServer server = this.minecraft != null ? this.minecraft.getSingleplayerServer() : null;
+            if (server != null) {
+                server.execute(() -> {
+                    for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                        EffectSmpMod.syncChosenEffect(player);
+                        EffectSmpMod.syncUiState(player);
+                    }
+                });
             }
             this.onClose();
         } catch (NumberFormatException e) {
