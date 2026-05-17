@@ -2,6 +2,21 @@
 
 > All notable changes to this project are documented in this file.
 
+### 1.0.3 Patch
+- Fixed `ClientHelloPayload` never being registered server-side, which could silently drop packets or disconnect clients.
+- Moved `enabledEffectIds` from `SyncEffectPayload` to `UiStatePayload` so the full enabled-effect list is sent once on join rather than on every sync call.
+- Bumped client/server handshake protocol to version 3 to reflect the changed packet formats.
+- Fixed grammar in PvP death messages: *"killed lost"* → *"killed and lost"*, *"a Aura Plus"* → *"an Aura Plus"*.
+- Fixed `resetForRepick` hardcoding the key name `[Y]` in its message; the server now sends a generic translatable string and lets the existing prompt payload show the player's actual bound key.
+- Simplified the redundant `instanceof` pattern in `applyEffectById` / `removeEffectById` to a null check followed by a single unchecked cast.
+- Config screen is now fully read-only when connected to a dedicated server: Save button is disabled, fields are non-editable, and a notice is displayed. Effect toggle buttons also respect this state.
+- Config screen server-side sync is now submitted via `server.execute()`, fixing a client-thread race condition in singleplayer.
+- Converted all remaining hardcoded `Component.literal` player-facing messages to `Component.translatable` entries.
+- Added missing lang keys: `ui_disabled`, `effect_reset`, `repick_item_used`, `max_tokens_reached`, `extra_token_gained`, `withdrawn_effect_restored`, `pvp_lost_token`.
+- Replaced private constants + getter boilerplate (`getChosenEffectKey()` etc.) with `public static final` fields in `EffectSmpMod`.
+- Replaced manual last-element iteration over `LinkedHashSet` with `stream().reduce((a, b) -> b)` in `withdrawLatestSelectedEffect` and `removeLastSelectedEffects`.
+- Removed `refreshEnabledEffectsFromConfig()` from the client mod; the enabled-effect list is now kept in sync exclusively via `UiStatePayload`.
+
 ### 1.0.2 Patch
 - Added withdrawn-effect tracking stack for players.
 - Updated `/aura withdraw` to withdraw one selected effect into an `Aura Plus` item (falls back to withdrawing one token if no effects are selected).
