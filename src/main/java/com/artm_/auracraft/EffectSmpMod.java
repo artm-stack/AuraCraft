@@ -6,6 +6,7 @@ import com.artm_.auracraft.payload.PromptEffectPayload;
 import com.artm_.auracraft.payload.SyncEffectPayload;
 import com.artm_.auracraft.payload.UiStatePayload;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,7 +14,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -31,6 +31,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -42,6 +43,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -58,15 +60,13 @@ public final class EffectSmpMod implements ModInitializer {
     public static final String MOD_ID = "auracraft";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-    private static final String CHOSEN_EFFECT_KEY = "auracraft_chosen_effect";
-    private static final String CHOSEN_EFFECTS_KEY = "auracraft_chosen_effects";
-    private static final String EFFECT_AMPLIFIER_BONUSES_KEY = "auracraft_effect_amplifier_bonuses";
-    private static final String SELECTION_TOKENS_KEY = "auracraft_selection_tokens";
-    private static final String FIRST_EFFECT_KEY = "auracraft_first_effect";
-    private static final String WITHDRAWN_EFFECTS_KEY = "auracraft_withdrawn_effects";
+    public static final String CHOSEN_EFFECT_KEY = "auracraft_chosen_effect";
+    public static final String CHOSEN_EFFECTS_KEY = "auracraft_chosen_effects";
+    public static final String EFFECT_AMPLIFIER_BONUSES_KEY = "auracraft_effect_amplifier_bonuses";
+    public static final String SELECTION_TOKENS_KEY = "auracraft_selection_tokens";
+    public static final String FIRST_EFFECT_KEY = "auracraft_first_effect";
+    public static final String WITHDRAWN_EFFECTS_KEY = "auracraft_withdrawn_effects";
     private static final int MAX_SELECTION_TOKENS = 3;
-    private static final int HANDSHAKE_TIMEOUT_TICKS = 100;
-    private static final Map<UUID, Integer> PENDING_HANDSHAKE_DEADLINES = new HashMap<>();
 
     public static final Item REPICK_ITEM = new Item(itemProperties("aura_reset").stacksTo(16).rarity(Rarity.RARE)) {
         @Override
@@ -81,11 +81,10 @@ public final class EffectSmpMod implements ModInitializer {
                 setAvailableSelectionTokens(serverPlayer, selectedCount);
                 syncChosenEffect(serverPlayer);
                 if (!isUiDisabled(serverPlayer.level().getServer())) {
-                    ServerPlayNetworking.send(serverPlayer, PromptEffectPayload.INSTANCE);
+                    sendIfSupported(serverPlayer, PromptEffectPayload.INSTANCE);
                 }
                 serverPlayer.sendSystemMessage(
-                    Component.literal("All effects removed. ").withStyle(ChatFormatting.GREEN)
-                        .append(Component.translatable("message.auracraft.repick_item_used_suffix", selectedCount).withStyle(ChatFormatting.WHITE))
+                    Component.translatable("message.auracraft.repick_item_used", selectedCount).withStyle(ChatFormatting.GREEN)
                 );
                 if (!serverPlayer.getAbilities().instabuild) {
                     ItemStack stack = player.getItemInHand(hand);
@@ -107,7 +106,7 @@ public final class EffectSmpMod implements ModInitializer {
                     return InteractionResult.FAIL;
                 }
                 if (getAvailableSelectionTokens(serverPlayer) >= MAX_SELECTION_TOKENS) {
-                    serverPlayer.sendSystemMessage(Component.literal("You already have the max token count (" + MAX_SELECTION_TOKENS + ").").withStyle(ChatFormatting.RED));
+                    serverPlayer.sendSystemMessage(Component.translatable("message.auracraft.max_tokens_reached", MAX_SELECTION_TOKENS).withStyle(ChatFormatting.RED));
                     return InteractionResult.FAIL;
                 }
                 String restoredWithdrawn = tryRestoreWithdrawnEffect(serverPlayer);
@@ -120,20 +119,17 @@ public final class EffectSmpMod implements ModInitializer {
                 }
                 syncChosenEffect(serverPlayer);
                 if (!isUiDisabled(serverPlayer.level().getServer())) {
-                    ServerPlayNetworking.send(serverPlayer, PromptEffectPayload.INSTANCE);
+                    sendIfSupported(serverPlayer, PromptEffectPayload.INSTANCE);
                 }
                 if (restoredWithdrawn != null) {
                     serverPlayer.sendSystemMessage(
-                        Component.literal("Your withdrawn effect was restored: ").withStyle(ChatFormatting.WHITE)
-                            .append(effectNameComponent(restoredWithdrawn).copy().withStyle(ChatFormatting.AQUA))
+                        Component.translatable("message.auracraft.withdrawn_effect_restored", effectNameComponent(restoredWithdrawn)).withStyle(ChatFormatting.WHITE)
                     );
                 } else if (restoredFirst) {
                     serverPlayer.sendSystemMessage(Component.translatable("message.auracraft.extra_token_restored_first").withStyle(ChatFormatting.WHITE));
                 } else {
                     serverPlayer.sendSystemMessage(
-                        Component.literal("You gained ").withStyle(ChatFormatting.WHITE)
-                            .append(Component.literal("+1").withStyle(ChatFormatting.GREEN))
-                            .append(Component.literal(" effect token.").withStyle(ChatFormatting.WHITE))
+                        Component.translatable("message.auracraft.extra_token_gained").withStyle(ChatFormatting.WHITE)
                     );
                 }
                 playTokenGainSound(serverPlayer);
@@ -183,34 +179,24 @@ public final class EffectSmpMod implements ModInitializer {
             })
         );
 
-        ServerPlayNetworking.registerGlobalReceiver(ClientHelloPayload.TYPE, (payload, context) ->
-            context.server().execute(() -> {
-                ServerPlayer player = context.player();
-                if (payload.protocolVersion() != ClientHelloPayload.PROTOCOL_VERSION) {
-                    PENDING_HANDSHAKE_DEADLINES.remove(player.getUUID());
-                    player.connection.disconnect(
-                        Component.literal("AuraCraft client is outdated. Requires: " + ClientHelloPayload.PROTOCOL_VERSION + ", found: " + payload.protocolVersion())
-                    );
-                    return;
-                }
-                PENDING_HANDSHAKE_DEADLINES.remove(player.getUUID());
-            })
-        );
+        ServerPlayNetworking.registerGlobalReceiver(ClientHelloPayload.TYPE, (payload, context) -> {
+            if (payload.protocolVersion() != ClientHelloPayload.PROTOCOL_VERSION) {
+                LOGGER.warn("Player {} connected with AuraCraft protocol version {} (expected {})",
+                    context.player().getName().getString(),
+                    payload.protocolVersion(),
+                    ClientHelloPayload.PROTOCOL_VERSION);
+            }
+        });
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
             ServerPlayer player = handler.getPlayer();
-            PENDING_HANDSHAKE_DEADLINES.put(player.getUUID(), server.getTickCount() + HANDSHAKE_TIMEOUT_TICKS);
             syncUiState(player);
             syncChosenEffect(player);
             if (!isUiDisabled(server) && getAvailableSelectionTokens(player) > 0) {
-                ServerPlayNetworking.send(player, PromptEffectPayload.INSTANCE);
-            } else {
-                reapplyChosenEffect(player);
+                sendIfSupported(player, PromptEffectPayload.INSTANCE);
             }
+            reapplyChosenEffect(player);
         });
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-            PENDING_HANDSHAKE_DEADLINES.remove(handler.getPlayer().getUUID())
-        );
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             dispatcher.register(createRootCommand("aura"));
@@ -247,35 +233,15 @@ public final class EffectSmpMod implements ModInitializer {
                         Component.translatable("message.auracraft.pvp_lost_effect", effectNameComponent(lost)).withStyle(ChatFormatting.WHITE)
                     );
                 } else if (lostTokenInstead) {
-                    victim.sendSystemMessage(Component.literal("You were killed lost 1 Aura Plus token.").withStyle(ChatFormatting.WHITE));
+                    victim.sendSystemMessage(Component.translatable("message.auracraft.pvp_lost_token").withStyle(ChatFormatting.WHITE));
                 }
                 if (droppedPlusItem) {
-                    killer.sendSystemMessage(
-                        Component.literal("You killed a player. They dropped a ").withStyle(ChatFormatting.WHITE)
-                            .append(Component.literal("Aura Plus.").withStyle(ChatFormatting.GREEN))
-                    );
+                    killer.sendSystemMessage(Component.translatable("message.auracraft.kill_dropped_token_item").withStyle(ChatFormatting.WHITE));
                 }
             }
         });
 
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            if (!PENDING_HANDSHAKE_DEADLINES.isEmpty()) {
-                List<UUID> toKick = new ArrayList<>();
-                int tick = server.getTickCount();
-                for (Map.Entry<UUID, Integer> entry : PENDING_HANDSHAKE_DEADLINES.entrySet()) {
-                    if (tick >= entry.getValue()) {
-                        toKick.add(entry.getKey());
-                    }
-                }
-                for (UUID id : toKick) {
-                    ServerPlayer player = server.getPlayerList().getPlayer(id);
-                    if (player != null) {
-                        player.connection.disconnect(Component.literal("AuraCraft mod is required on client"));
-                    }
-                    PENDING_HANDSHAKE_DEADLINES.remove(id);
-                }
-            }
-
             if (server.getTickCount() % 100 != 0) {
                 return;
             }
@@ -312,10 +278,7 @@ public final class EffectSmpMod implements ModInitializer {
             syncChosenEffect(player);
             playEffectChooseSound(player);
             player.sendSystemMessage(
-                Component.literal("Upgraded ").withStyle(ChatFormatting.WHITE)
-                    .append(effectNameComponent(selectedId).copy().withStyle(ChatFormatting.WHITE))
-                    .append(Component.literal(". Bonus amplifier now ").withStyle(ChatFormatting.WHITE))
-                    .append(Component.literal("+" + newBonus).withStyle(ChatFormatting.AQUA))
+                Component.translatable("message.auracraft.effect_upgraded", effectNameComponent(selectedId), "+" + newBonus)
             );
             return;
         }
@@ -363,12 +326,11 @@ public final class EffectSmpMod implements ModInitializer {
     }
 
     public static void syncChosenEffect(ServerPlayer player) {
-        ServerPlayNetworking.send(
+        sendIfSupported(
             player,
             new SyncEffectPayload(
                 new ArrayList<>(getSelectedEffectIds(player)),
                 new ArrayList<>(getCappedEffectIds(player)),
-                new ArrayList<>(getEnabledPickerEffectIds()),
                 getAvailableSelectionTokens(player),
                 getMaxDuplicateAmplifierBonus()
             )
@@ -381,9 +343,9 @@ public final class EffectSmpMod implements ModInitializer {
         setFirstEffectId(player, null);
         syncChosenEffect(player);
         if (!isUiDisabled(player.level().getServer())) {
-            ServerPlayNetworking.send(player, PromptEffectPayload.INSTANCE);
+            sendIfSupported(player, PromptEffectPayload.INSTANCE);
         }
-        player.sendSystemMessage(Component.literal("Your effect was reset. Press [Y] to pick again."));
+        player.sendSystemMessage(Component.translatable("message.auracraft.effect_reset"));
     }
 
     public static boolean isUiDisabled(MinecraftServer server) {
@@ -399,38 +361,20 @@ public final class EffectSmpMod implements ModInitializer {
             if (disabled) {
                 player.sendSystemMessage(Component.translatable("message.auracraft.ui_disabled"));
             } else if (getAvailableSelectionTokens(player) > 0) {
-                ServerPlayNetworking.send(player, PromptEffectPayload.INSTANCE);
+                sendIfSupported(player, PromptEffectPayload.INSTANCE);
             }
         }
     }
 
     public static void syncUiState(ServerPlayer player) {
         boolean disabled = isUiDisabled(player.level().getServer());
-        ServerPlayNetworking.send(player, new UiStatePayload(disabled));
+        sendIfSupported(player, new UiStatePayload(disabled, new ArrayList<>(getEnabledPickerEffectIds())));
     }
 
-    public static String getChosenEffectKey() {
-        return CHOSEN_EFFECT_KEY;
-    }
-
-    public static String getChosenEffectsKey() {
-        return CHOSEN_EFFECTS_KEY;
-    }
-
-    public static String getEffectAmplifierBonusesKey() {
-        return EFFECT_AMPLIFIER_BONUSES_KEY;
-    }
-
-    public static String getSelectionTokensKey() {
-        return SELECTION_TOKENS_KEY;
-    }
-
-    public static String getFirstEffectKey() {
-        return FIRST_EFFECT_KEY;
-    }
-
-    public static String getWithdrawnEffectsKey() {
-        return WITHDRAWN_EFFECTS_KEY;
+    private static void sendIfSupported(ServerPlayer player, CustomPacketPayload payload) {
+        if (ServerPlayNetworking.canSend(player, payload.type())) {
+            ServerPlayNetworking.send(player, payload);
+        }
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> createRootCommand(String rootName) {
@@ -485,6 +429,20 @@ public final class EffectSmpMod implements ModInitializer {
                         );
                         return 1;
                     })
+                )
+            )
+            .then(literal("effects")
+                .requires(source -> source.getEntity() instanceof ServerPlayer)
+                .executes(context -> listEnabledEffectsCommand(context.getSource(), context.getSource().getPlayerOrException()))
+            )
+            .then(literal("choose")
+                .requires(source -> source.getEntity() instanceof ServerPlayer)
+                .then(argument("effect", StringArgumentType.word())
+                    .executes(context -> chooseEffectCommand(
+                        context.getSource(),
+                        context.getSource().getPlayerOrException(),
+                        StringArgumentType.getString(context, "effect")
+                    ))
                 )
             )
             .then(literal("withdraw")
@@ -543,6 +501,37 @@ public final class EffectSmpMod implements ModInitializer {
             );
     }
 
+    private static int listEnabledEffectsCommand(CommandSourceStack source, ServerPlayer player) {
+        Set<String> selectedIds = getSelectedEffectIds(player);
+        List<String> enabledIds = new ArrayList<>(getEnabledPickerEffectIds());
+        enabledIds.sort(String::compareTo);
+
+        source.sendSuccess(
+            () -> Component.literal("Enabled effects (" + enabledIds.size() + "): " + (enabledIds.isEmpty() ? "none" : String.join(", ", enabledIds))),
+            false
+        );
+        source.sendSuccess(
+            () -> Component.literal("Selected effects: " + (selectedIds.isEmpty() ? "none" : String.join(", ", selectedIds)) + " | tokens=" + getAvailableSelectionTokens(player)),
+            false
+        );
+        return 1;
+    }
+
+    private static int chooseEffectCommand(CommandSourceStack source, ServerPlayer player, String rawEffectId) {
+        String effectId = normalizeEffectId(rawEffectId);
+        if (effectId == null || !isKnownEffectId(effectId)) {
+            source.sendFailure(Component.translatable("message.auracraft.invalid_effect").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+        if (!EffectSmpConfig.get().isEffectEnabled(effectId)) {
+            source.sendFailure(Component.translatable("message.auracraft.effect_disabled_in_config").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+
+        handleEffectSelection(player, effectId);
+        return 1;
+    }
+
     private static int withdrawTokenCommand(CommandSourceStack source, ServerPlayer player) {
         String withdrawnEffect = withdrawLatestSelectedEffect(player);
         if (withdrawnEffect == null) {
@@ -560,7 +549,7 @@ public final class EffectSmpMod implements ModInitializer {
         }
         syncChosenEffect(player);
         if (!isUiDisabled(player.level().getServer()) && getAvailableSelectionTokens(player) > 0) {
-            ServerPlayNetworking.send(player, PromptEffectPayload.INSTANCE);
+            sendIfSupported(player, PromptEffectPayload.INSTANCE);
         }
 
         if (withdrawnEffect != null) {
@@ -583,10 +572,7 @@ public final class EffectSmpMod implements ModInitializer {
             return null;
         }
 
-        String lastId = null;
-        for (String id : selectedIds) {
-            lastId = id;
-        }
+        String lastId = selectedIds.stream().reduce((a, b) -> b).orElse(null);
         if (lastId == null) {
             return null;
         }
@@ -618,7 +604,7 @@ public final class EffectSmpMod implements ModInitializer {
         syncChosenEffect(target);
         playTokenGainSound(target);
         if (!isUiDisabled(target.level().getServer())) {
-            ServerPlayNetworking.send(target, PromptEffectPayload.INSTANCE);
+            sendIfSupported(target, PromptEffectPayload.INSTANCE);
         }
         source.sendSuccess(
             () -> Component.literal("Added +" + added + " Effect token(s) to " + target.getName().getString() + "."),
@@ -794,10 +780,7 @@ public final class EffectSmpMod implements ModInitializer {
         }
         String removedId = null;
         for (int i = 0; i < steps && !selectedIds.isEmpty(); i++) {
-            String lastId = null;
-            for (String id : selectedIds) {
-                lastId = id;
-            }
+            String lastId = selectedIds.stream().reduce((a, b) -> b).orElse(null);
             if (lastId == null) {
                 break;
             }
@@ -1025,15 +1008,14 @@ public final class EffectSmpMod implements ModInitializer {
         if (!BuiltInRegistries.MOB_EFFECT.containsKey(id)) {
             return;
         }
-        int amplifier = Math.max(0, additionalBonus);
-        int durationTicks = 30 * 20;
-        Holder.Reference<?> genericRef = BuiltInRegistries.MOB_EFFECT.get(id).orElse(null);
-        if (!(genericRef instanceof Holder.Reference<?> refObj)) {
+        Holder.Reference<?> ref = BuiltInRegistries.MOB_EFFECT.get(id).orElse(null);
+        if (ref == null) {
             return;
         }
         @SuppressWarnings("unchecked")
-        Holder.Reference<net.minecraft.world.effect.MobEffect> effectRef =
-            (Holder.Reference<net.minecraft.world.effect.MobEffect>) refObj;
+        Holder.Reference<MobEffect> effectRef = (Holder.Reference<MobEffect>) ref;
+        int amplifier = Math.max(0, additionalBonus);
+        int durationTicks = 30 * 20;
         MobEffectInstance current = player.getEffect(effectRef);
         if (current == null || current.getDuration() < 20 * 10 || current.getAmplifier() < amplifier) {
             player.addEffect(new MobEffectInstance(effectRef, durationTicks, amplifier, true, false, true));
@@ -1049,22 +1031,20 @@ public final class EffectSmpMod implements ModInitializer {
         if (!BuiltInRegistries.MOB_EFFECT.containsKey(id)) {
             return;
         }
-        Holder.Reference<?> genericRef = BuiltInRegistries.MOB_EFFECT.get(id).orElse(null);
-        if (genericRef instanceof Holder.Reference<?> refObj) {
-            @SuppressWarnings("unchecked")
-            Holder.Reference<net.minecraft.world.effect.MobEffect> effectRef =
-                (Holder.Reference<net.minecraft.world.effect.MobEffect>) refObj;
-            player.removeEffect(effectRef);
+        Holder.Reference<?> ref = BuiltInRegistries.MOB_EFFECT.get(id).orElse(null);
+        if (ref == null) {
+            return;
         }
+        @SuppressWarnings("unchecked")
+        Holder.Reference<MobEffect> effectRef = (Holder.Reference<MobEffect>) ref;
+        player.removeEffect(effectRef);
     }
 
     private static void playTokenGainSound(ServerPlayer player) {
-        // Null "except" means nobody is excluded; recipient will hear it.
         player.level().playSound(null, player.blockPosition(), SoundEvents.PLAYER_LEVELUP, SoundSource.PLAYERS, 0.45F, 1.1F);
     }
 
     private static void playEffectChooseSound(ServerPlayer player) {
-        // Null "except" means nobody is excluded; recipient will hear it.
         player.level().playSound(null, player.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 0.55F, 0.95F);
     }
 }

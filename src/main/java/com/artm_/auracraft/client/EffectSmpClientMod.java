@@ -1,6 +1,5 @@
 package com.artm_.auracraft.client;
 
-import com.artm_.auracraft.EffectSmpConfig;
 import com.artm_.auracraft.payload.ChooseEffectPayload;
 import com.artm_.auracraft.payload.ClientHelloPayload;
 import com.artm_.auracraft.payload.PromptEffectPayload;
@@ -20,7 +19,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.glfw.GLFW;
@@ -53,15 +51,17 @@ public final class EffectSmpClientMod implements ClientModInitializer {
                 selectedEffectIds.addAll(payload.selectedEffectIds());
                 cappedEffectIds.clear();
                 cappedEffectIds.addAll(payload.cappedEffectIds());
-                enabledEffectIds.clear();
-                enabledEffectIds.addAll(payload.enabledEffectIds());
                 availableTokens = payload.availableTokens();
                 maxDuplicateAmplifierBonus = payload.maxDuplicateAmplifierBonus();
             })
         );
 
         ClientPlayNetworking.registerGlobalReceiver(UiStatePayload.TYPE, (payload, context) ->
-            context.client().execute(() -> uiDisabled = payload.uiDisabled())
+            context.client().execute(() -> {
+                uiDisabled = payload.uiDisabled();
+                enabledEffectIds.clear();
+                enabledEffectIds.addAll(payload.enabledEffectIds());
+            })
         );
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
@@ -135,13 +135,12 @@ public final class EffectSmpClientMod implements ClientModInitializer {
         List<String> list = new ArrayList<>();
         if (enabledEffectIds.isEmpty()) {
             return list;
-        } else {
-            for (String effectId : enabledEffectIds) {
-                try {
-                    Identifier.parse(effectId);
-                    list.add(effectId);
-                } catch (Exception ignored) {
-                }
+        }
+        for (String effectId : enabledEffectIds) {
+            try {
+                Identifier.parse(effectId);
+                list.add(effectId);
+            } catch (Exception ignored) {
             }
         }
         list.sort(Comparator.naturalOrder());
@@ -154,16 +153,6 @@ public final class EffectSmpClientMod implements ClientModInitializer {
             return Component.translatable("effect." + id.getNamespace() + "." + id.getPath());
         } catch (Exception ignored) {
             return Component.literal(effectId);
-        }
-    }
-
-    public static void refreshEnabledEffectsFromConfig() {
-        enabledEffectIds.clear();
-        for (Identifier id : BuiltInRegistries.MOB_EFFECT.keySet()) {
-            String effectId = id.toString();
-            if (EffectSmpConfig.get().isEffectEnabled(effectId)) {
-                enabledEffectIds.add(effectId);
-            }
         }
     }
 }
