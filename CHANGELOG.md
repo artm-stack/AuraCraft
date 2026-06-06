@@ -4,7 +4,7 @@
 
 ### 1.1.0
 
-**Terminology — "tokens/effects" → "points/auras"**
+**Terminology "tokens/effects" -> "points/auras"**
 - Renamed all player-facing and internal references from "tokens" to "points" and from "effects" to "auras" for consistency.
 
 **Restoration Queue**
@@ -35,14 +35,14 @@
 - Config file (`auracraft.json`) now only controls per-aura enable/disable and max upgrade level.
 
 **Command improvements**
-- Added `/aura restart [player]` — hard reset to 1 point, clears all auras, effects, and restoration queue.
+- Added `/aura restart [player]` - hard reset to 1 point, clears all auras, effects, and restoration queue.
 - `/aura status` now labels the player name in its output.
 - Version mismatch disconnect message is now translatable instead of hardcoded English.
 
 **Code quality**
 - `resetPlayer()` now returns the number of points refunded; callers handle their own feedback messages.
 - Removed duplicate inline reset logic from `Items.java`; item now delegates directly to `AuraCraft.resetPlayer()`.
-- Upgrade message now correctly shows the new level (e.g. "+1 → Level 2") instead of the pre-upgrade amplifier index.
+- Upgrade message now correctly shows the new level (e.g. "+1 -> Level 2") instead of the pre-upgrade amplifier index.
 - Removed dead `withdrawnAura` field and all associated infrastructure from `PlayerMixin` and `PlayerAuraData`.
 - Removed orphaned lang key `screen.auracraft.col_max_upg`.
 - `"AuraCraft"` title literal in the prompt handler replaced with `Component.translatable("message.auracraft.mod_name")`.
@@ -54,9 +54,6 @@
 - `message.auracraft.aura_restored`
 - `message.auracraft.reset_no_history`
 - `command.auracraft.status.player`
-
-**Client mod now required**
-- The client mod has always been part of the handshake, but this is now explicitly documented. Clients without AuraCraft or with a mismatched protocol version are rejected on join.
 
 ---
 
