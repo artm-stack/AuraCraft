@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "NCN",
+    "SES",
+    "NCN"
+  ],
+  "key": {
+    "N": "minecraft:nautilus_shell",
+    "C": "minecraft:prismarine_crystals",
+    "S": "minecraft:prismarine_shard",
+    "E": "minecraft:ender_eye"
+  },
+  "result": { "id": "minecraft:heart_of_the_sea", "count": 1 }
+}

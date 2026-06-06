@@ -1,0 +1,33 @@
+{
+	"schemaVersion": 1,
+	"id": "auracraft",
+	"version": "${version}",
+	"name": "AuraCraft",
+	"description": "A Fabric mod that lets players choose and gain Auras.",
+	"authors": [
+		"ArtM_"
+	],
+	"license": "MIT",
+	"icon": "assets/auracraft/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"artm.auracraft.AuraCraft"
+		],
+		"client": [
+			"artm.auracraft.client.AuraCraftClient"
+		],
+		"modmenu": [
+			"artm.auracraft.client.ModMenuIntegration"
+		]
+	},
+	"mixins": [
+		"auracraft.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.1",
+		"minecraft": "~26.1.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}

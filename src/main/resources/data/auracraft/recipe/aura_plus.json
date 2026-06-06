@@ -1,0 +1,15 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " N ",
+    "DSD",
+    " B "
+  ],
+  "key": {
+    "N": "minecraft:netherite_ingot",
+    "D": "minecraft:diamond_block",
+    "S": "minecraft:nether_star",
+    "B": "minecraft:netherite_block"
+  },
+  "result": { "id": "auracraft:aura_plus", "count": 1 }
+}

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    " S ",
+    "RHM",
+    " B "
+  ],
+  "key": {
+    "S": "minecraft:sugar",
+    "R": "minecraft:rabbit_foot",
+    "H": "minecraft:heart_of_the_sea",
+    "M": "minecraft:magma_cream",
+    "B": "minecraft:blaze_powder"
+  },
+  "result": { "id": "auracraft:aura_reset", "count": 1 }
+}
